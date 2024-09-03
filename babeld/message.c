@@ -392,12 +392,24 @@ parse_packet(const unsigned char *from, struct interface *ifp,
         len = message[1];
 
         if(type == MESSAGE_PADN) {
+            for (int i = 0; i < len; i++) {
+                if (message[i + 2] != 0) {
+                    debugf(BABEL_DEBUG_COMMON,"Received pad%d with non zero MBZ field from %s on %s.",
+                   len, format_address(from), ifp->name);
+                }
+            }
             debugf(BABEL_DEBUG_COMMON,"Received pad%d from %s on %s.",
                    len, format_address(from), ifp->name);
         } else if(type == MESSAGE_ACK_REQ) {
             unsigned short nonce, interval;
+            DO_NTOHS(Reserved, message + 2);
             DO_NTOHS(nonce, message + 4);
             DO_NTOHS(interval, message + 6);
+            if (Reserved != 0) {
+               debugf(BABEL_DEBUG_COMMON,"Received ack-req (%04X %d) with non zero Reserved from %s on %s.",
+                   nonce, interval, format_address(from), ifp->name);
+               goto done;
+            }
             debugf(BABEL_DEBUG_COMMON,"Received ack-req (%04X %d) from %s on %s.",
                    nonce, interval, format_address(from), ifp->name);
             send_ack(neigh, nonce, interval);
